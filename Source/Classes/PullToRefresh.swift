@@ -7,48 +7,52 @@
 //  Copyright © 2016年 Leo. All rights reserved.
 
 import Foundation
-import UIKit
 import ObjectiveC
+import UIKit
 
 // MARK: - Header API  -
 
-@objc class AttachObject:NSObject{
-    init(closure:@escaping ()->()) {
+@objc class AttachObject: NSObject {
+    init(closure: @escaping () -> Void) {
         onDeinit = closure
         super.init()
     }
-    var onDeinit:()->()
+
+    var onDeinit: () -> Void
     deinit {
         onDeinit()
     }
 }
 
-@objc public enum RefreshResult:Int{
+@objc public enum RefreshResult: Int {
     case success = 200
     case failure = 400
     case none = 0
 }
 
 public enum HeaderRefresherState {
-    case refreshing //刷新中
-    case normal(RefreshResult,TimeInterval)//正常状态
-    case removed //移除
+    case refreshing // 刷新中
+    case normal(RefreshResult, TimeInterval) // 正常状态
+    case removed // 移除
 }
 
-public extension UIScrollView{
-    public func invalidateRefreshControls(){
-        let tags = [PullToRefreshKitConst.headerTag,
-                    PullToRefreshKitConst.footerTag,
-                    PullToRefreshKitConst.leftTag,
-                    PullToRefreshKitConst.rightTag]
-        tags.forEach { (tag) in
+public extension UIScrollView {
+    public func invalidateRefreshControls() {
+        let tags = [
+            PullToRefreshKitConst.headerTag,
+            PullToRefreshKitConst.footerTag,
+            PullToRefreshKitConst.leftTag,
+            PullToRefreshKitConst.rightTag,
+        ]
+        tags.forEach { tag in
             let oldContain = self.viewWithTag(tag)
             oldContain?.removeFromSuperview()
         }
     }
-    func configAssociatedObject(object:AnyObject){
-        guard objc_getAssociatedObject(object, &AssociatedObject.key) == nil else{
-            return;
+
+    func configAssociatedObject(object: AnyObject) {
+        guard objc_getAssociatedObject(object, &AssociatedObject.key) == nil else {
+            return
         }
         let attach = AttachObject { [weak self] in
             self?.invalidateRefreshControls()
@@ -58,40 +62,39 @@ public extension UIScrollView{
 }
 
 struct AssociatedObject {
-    static var key:UInt8 = 0
+    static var key: UInt8 = 0
 }
 
-public extension UIScrollView{
-    
-    public func configRefreshHeader(with refrehser:UIView & RefreshableHeader = DefaultRefreshHeader.header(),
+public extension UIScrollView {
+    public func configRefreshHeader(with refrehser: UIView & RefreshableHeader = DefaultRefreshHeader.header(),
                                     container object: AnyObject,
-                                    action:@escaping ()->()){
-        let oldContain = self.viewWithTag(PullToRefreshKitConst.headerTag)
+                                    action: @escaping () -> Void) {
+        let oldContain = viewWithTag(PullToRefreshKitConst.headerTag)
         oldContain?.removeFromSuperview()
-        let containFrame = CGRect(x: 0, y: -self.frame.height, width: self.frame.width, height: self.frame.height)
+        let containFrame = CGRect(x: 0, y: -frame.height, width: frame.width, height: frame.height)
         let containComponent = RefreshHeaderContainer(frame: containFrame)
-        if let endDuration = refrehser.durationOfHideAnimation?(){
+        if let endDuration = refrehser.durationOfHideAnimation?() {
             containComponent.durationOfEndRefreshing = endDuration
         }
         containComponent.tag = PullToRefreshKitConst.headerTag
         containComponent.refreshAction = action
-        self.addSubview(containComponent)
+        addSubview(containComponent)
         containComponent.delegate = refrehser
-        refrehser.autoresizingMask = [.flexibleWidth,.flexibleHeight]
+        refrehser.autoresizingMask = [.flexibleWidth, .flexibleHeight]
         let refreshHeight = refrehser.heightForHeader()
-        let bounds = CGRect(x: 0,y: containFrame.height - refreshHeight,width: self.frame.width,height: refreshHeight)
+        let bounds = CGRect(x: 0, y: containFrame.height - refreshHeight, width: frame.width, height: refreshHeight)
         refrehser.frame = bounds
         containComponent.addSubview(refrehser)
         configAssociatedObject(object: object)
     }
-    
-    public func switchRefreshHeader(to state:HeaderRefresherState){
-        let header = self.viewWithTag(PullToRefreshKitConst.headerTag) as? RefreshHeaderContainer
+
+    public func switchRefreshHeader(to state: HeaderRefresherState) {
+        let header = viewWithTag(PullToRefreshKitConst.headerTag) as? RefreshHeaderContainer
         switch state {
         case .refreshing:
             header?.beginRefreshing()
-        case .normal(let result, let delay):
-            header?.endRefreshing(result,delay: delay)
+        case let .normal(result, delay):
+            header?.endRefreshing(result, delay: delay)
         case .removed:
             header?.removeFromSuperview()
         }
@@ -101,34 +104,32 @@ public extension UIScrollView{
 // MARK: - Footer API  -
 
 public enum FooterRefresherState {
-    case refreshing //刷新中
-    case normal //正常状态，转换到这个状态会结束刷新
-    case noMoreData //没有数据，转换到这个状态会结束刷新
-    case removed //移除
+    case refreshing // 刷新中
+    case normal // 正常状态，转换到这个状态会结束刷新
+    case noMoreData // 没有数据，转换到这个状态会结束刷新
+    case removed // 移除
 }
 
-
-public extension UIScrollView{
-    public func configRefreshFooter(with refrehser:UIView & RefreshableFooter = DefaultRefreshFooter.footer(),
+public extension UIScrollView {
+    public func configRefreshFooter(with refrehser: UIView & RefreshableFooter = DefaultRefreshFooter.footer(),
                                     container object: AnyObject,
-                                    action:@escaping ()->()){
-        let oldContain = self.viewWithTag(PullToRefreshKitConst.footerTag)
+                                    action: @escaping () -> Void) {
+        let oldContain = viewWithTag(PullToRefreshKitConst.footerTag)
         oldContain?.removeFromSuperview()
-        let containComponent = RefreshFooterContainer(frame: CGRect(x: 0, y: 0, width: self.frame.size.width, height: refrehser.heightForFooter()))
+        let containComponent = RefreshFooterContainer(frame: CGRect(x: 0, y: 0, width: frame.size.width, height: refrehser.heightForFooter()))
         containComponent.tag = PullToRefreshKitConst.footerTag
         containComponent.refreshAction = action
-        self.insertSubview(containComponent, at: 0)
+        insertSubview(containComponent, at: 0)
         containComponent.delegate = refrehser
-        refrehser.autoresizingMask = [.flexibleWidth,.flexibleHeight]
+        refrehser.autoresizingMask = [.flexibleWidth, .flexibleHeight]
         refrehser.frame = containComponent.bounds
         containComponent.addSubview(refrehser)
         configAssociatedObject(object: object)
     }
-    
-    public func switchRefreshFooter(to state:FooterRefresherState){
-        let footer = self.viewWithTag(PullToRefreshKitConst.footerTag) as? RefreshFooterContainer
+
+    public func switchRefreshFooter(to state: FooterRefresherState) {
+        let footer = viewWithTag(PullToRefreshKitConst.footerTag) as? RefreshFooterContainer
         switch state {
-            
         case .refreshing:
             footer?.beginRefreshing()
         case .normal:
@@ -143,61 +144,60 @@ public extension UIScrollView{
     }
 }
 
-
 // MARK: - Left & Right API  -
 
 public enum SideRefreshDestination {
-    case left,right
+    case left, right
 }
 
-public extension UIScrollView{
-    public func configSideRefresh(with refrehser:UIView & RefreshableLeftRight,
+public extension UIScrollView {
+    public func configSideRefresh(with refrehser: UIView & RefreshableLeftRight,
                                   container object: AnyObject,
-                                  at destination:SideRefreshDestination,
-                                  action:@escaping ()->()){
+                                  at destination: SideRefreshDestination,
+                                  action: @escaping () -> Void) {
         switch destination {
-            case .left:
-                let oldContain = self.viewWithTag(PullToRefreshKitConst.leftTag)
-                oldContain?.removeFromSuperview()
-                let frame = CGRect(x: -1.0 * refrehser.frame.size.width,
-                                   y: 0.0,
-                                   width: refrehser.widthForComponent(),
-                                   height: self.frame.height)
-                let containComponent = RefreshLeftContainer(frame: frame)
-                containComponent.tag = PullToRefreshKitConst.leftTag
-                containComponent.refreshAction = action
-                self.insertSubview(containComponent, at: 0)
-                containComponent.delegate = refrehser
-                refrehser.autoresizingMask = [.flexibleWidth,.flexibleHeight]
-                refrehser.frame = containComponent.bounds
-                containComponent.addSubview(refrehser)
-            case .right:
-                let oldContain = self.viewWithTag(PullToRefreshKitConst.rightTag)
-                oldContain?.removeFromSuperview()
-                let frame = CGRect(x: 0 ,
-                                   y: 0 ,
-                                   width: refrehser.frame.size.width ,
-                                   height: self.frame.height)
-                let containComponent = RefreshRightContainer(frame: frame)
-                containComponent.tag = PullToRefreshKitConst.rightTag
-                containComponent.refreshAction = action
-                self.insertSubview(containComponent, at: 0)
-                
-                containComponent.delegate = refrehser
-                refrehser.autoresizingMask = [.flexibleWidth,.flexibleHeight]
-                refrehser.frame = containComponent.bounds
-                containComponent.addSubview(refrehser)
+        case .left:
+            let oldContain = viewWithTag(PullToRefreshKitConst.leftTag)
+            oldContain?.removeFromSuperview()
+            let frame = CGRect(x: -1.0 * refrehser.frame.size.width,
+                               y: 0.0,
+                               width: refrehser.widthForComponent(),
+                               height: self.frame.height)
+            let containComponent = RefreshLeftContainer(frame: frame)
+            containComponent.tag = PullToRefreshKitConst.leftTag
+            containComponent.refreshAction = action
+            insertSubview(containComponent, at: 0)
+            containComponent.delegate = refrehser
+            refrehser.autoresizingMask = [.flexibleWidth, .flexibleHeight]
+            refrehser.frame = containComponent.bounds
+            containComponent.addSubview(refrehser)
+        case .right:
+            let oldContain = viewWithTag(PullToRefreshKitConst.rightTag)
+            oldContain?.removeFromSuperview()
+            let frame = CGRect(x: 0,
+                               y: 0,
+                               width: refrehser.frame.size.width,
+                               height: self.frame.height)
+            let containComponent = RefreshRightContainer(frame: frame)
+            containComponent.tag = PullToRefreshKitConst.rightTag
+            containComponent.refreshAction = action
+            insertSubview(containComponent, at: 0)
+
+            containComponent.delegate = refrehser
+            refrehser.autoresizingMask = [.flexibleWidth, .flexibleHeight]
+            refrehser.frame = containComponent.bounds
+            containComponent.addSubview(refrehser)
         }
         configAssociatedObject(object: object)
     }
-    
-    public func removeSideRefresh(at destination:SideRefreshDestination){
+
+    public func removeSideRefresh(at destination: SideRefreshDestination) {
         switch destination {
         case .left:
-            let oldContain = self.viewWithTag(PullToRefreshKitConst.leftTag)
+            let oldContain = viewWithTag(PullToRefreshKitConst.leftTag)
             oldContain?.removeFromSuperview()
         case .right:
-            let oldContain = self.viewWithTag(PullToRefreshKitConst.rightTag)
+            let oldContain = viewWithTag(PullToRefreshKitConst.rightTag)
             oldContain?.removeFromSuperview()
         }
     }
